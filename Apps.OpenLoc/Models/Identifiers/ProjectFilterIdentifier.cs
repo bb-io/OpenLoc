@@ -6,6 +6,6 @@ namespace Apps.OpenLoc.Models.Identifiers;
 
 public class ProjectFilterIdentifier
 {
-    [Display("Project ID", Description = "Optional: select a project to populate the job dropdown."), DataSource(typeof(ProjectDataSourceHandler))]
+    [Display("Project ID", Description = "Optional: select a project to populate related dropdowns."), DataSource(typeof(ProjectDataSourceHandler))]
     public string? ProjectId { get; set; }
 }

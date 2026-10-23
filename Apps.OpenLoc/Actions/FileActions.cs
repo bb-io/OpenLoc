@@ -1,5 +1,6 @@
 using Apps.OpenLoc.Api;
 using Apps.OpenLoc.Models.Dtos;
+using Apps.OpenLoc.Models.Identifiers;
 using Apps.OpenLoc.Models.Requests;
 using Apps.OpenLoc.Models.Responses;
 using Apps.OpenLoc.Utils;
@@ -22,6 +23,29 @@ public class FileActions : Invocable
 
     internal FileActions(InvocationContext context, IFileManagementClient fileManagementClient, OpenLocClient client) : base(context, client) =>
         this.fileManagementClient = fileManagementClient;
+
+    [Action("Download original file", Description = "Download the original document exactly as it was uploaded.")]
+    public async Task<DownloadOriginalFileResponse> DownloadOriginalFile([ActionParameter] FileIdentifier request)
+    {
+        var fileId = InputValidation.IdPath(request.FileId, "File ID");
+        var response = await Client.DownloadOriginalFileAsync(fileId);
+        var name = FileTransfer.ResponseFileName(response);
+        if (name is null && !string.IsNullOrWhiteSpace(request.ProjectId))
+        {
+            try
+            {
+                var projectId = InputValidation.IdPath(request.ProjectId, "Project ID");
+                var metadata = await Client.GetDataAsync<FileDto>($"/projects/{projectId}/files/{fileId}");
+                name = FileTransfer.SafeFileName(metadata.OriginalName) ?? FileTransfer.SafeFileName(metadata.Name);
+            }
+            catch (Exception ex) when (ex is PluginMisconfigurationException or PluginApplicationException)
+            {
+            }
+        }
+        name ??= $"original-file-{fileId}.bin";
+        using var stream = new MemoryStream(response.RawBytes!, writable: false);
+        return new() { File = await fileManagementClient.UploadAsync(stream, response.ContentType ?? "application/octet-stream", name) };
+    }
 
     [Action("Upload file", Description = "Upload a document and create its translation jobs, one per target language.")]
     public async Task<UploadFileResponse> UploadFile([ActionParameter] UploadFileRequest request)

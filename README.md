@@ -111,6 +111,26 @@ Updates the assignee of the job's current workflow step and returns the updated 
 
 Returns **Segments**, including segment IDs, positions, source text, translations, review statuses, translation origins, translation memory match percentages, update times, and the previous workflow step's result when available. Untranslated target text and unavailable optional details have no value.
 
+### Save draft translation
+
+Choose **Job ID** and **Segment ID**, optionally selecting a project first to populate the job dropdown. The segment dropdown is filtered by the selected job and supports text search and cursor pagination. Enter optional **Translation text** to save it without approval. Leaving text empty preserves the current translation. The resulting status is `needs_review`.
+
+Optional **Expected updated at** accepts the segment's original `updated_at` timestamp, including its time zone and fractional seconds. The timestamp is sent unchanged. A stale timestamp produces a concurrency conflict; retrieve and review the latest segment before trying again. The app never fetches a newer timestamp and retries the write automatically.
+
+Returns **Segment ID**, nullable **Translation text**, **Status**, and **Updated at**. The returned timestamp is exact text that can be mapped into the next write's **Expected updated at** field.
+
+### Confirm translation
+
+Uses the same job, segment, text, and timestamp inputs as **Save draft translation**. Leaving **Translation text** empty confirms the existing translation unchanged. Confirmation approves the segment and saves it to the project's writable translation memories.
+
+A concurrency conflict stops the action. When QA blocks confirmation, the error includes the API error code/message and each finding's check type, severity, message, and ignored flag. Correct the findings before confirming again; the app does not bypass checks or retry the write.
+
+Returns the same segment-state fields as **Save draft translation**. These segment writes require write access. Owner, admin, project manager, and Linguist roles are documented; Linguists are restricted to jobs assigned to them. Enter known Job and Segment IDs directly if your role cannot list projects.
+
+### Add segment comment
+
+Select **Job ID** and **Segment ID**, then enter a required **Comment** of 1 to 5000 characters. Returns **Comment ID**, **Comment**, nullable **Author ID**, nullable **Author name**, and **Created date**. The comment ID identifies the new comment; it is distinct from the selected segment ID. Owner, admin, project manager, and assigned Linguist access is enforced by the API. A write-enabled key is required.
+
 ### Upload file
 
 Select **Project ID** from the existing project dropdown and map **File** from a previous Bird step. The file is downloaded through Blackbird's file-management service and uploaded as multipart form data. The API detects its format and creates one job per target language automatically. The app does not create any additional jobs or retry the upload automatically.
@@ -137,6 +157,21 @@ Returns **File ID**, **Project ID**, **File name**, **File format**, **Segment c
 Select or enter **Job ID**. Optionally select **Project ID** first to populate the existing searchable job dropdown; only the Job ID is used for export. **Export format** offers the original document format (`source`, the default) or bilingual XLIFF 1.2 (`xliff`).
 
 Returns a native Blackbird **File** that can be passed directly to subsequent actions. Binary content is stored through Blackbird's file-management service. The response filename is preserved, including its extension; if unavailable, the job's file name is used, with `.xlf` for an XLIFF export. Empty files and API failures produce errors. Owner, admin, and project manager roles can export; linguists can export jobs they are allowed to access.
+
+### Download original file
+
+Choose **File ID**, optionally selecting **Project ID** first to populate the searchable file dropdown. Files are fetched from the selected project using cursor pagination. The download itself uses only File ID and returns the document exactly as uploaded as a native Blackbird **File**.
+
+The response filename is preserved. Without a filename header, available project/file metadata supplies the original upload name, falling back to the current name. If metadata is unavailable, the output uses `original-file-<fileID>.bin`; binary content remains unchanged. Empty responses and API failures stop the action.
+
+Owner, admin, project manager, and Linguist roles can download, but a Linguist may access only files belonging to assigned jobs. Project file listing and metadata access require owner, admin, or project manager access, so Linguists can enter a known File ID directly. A failed optional metadata lookup does not block an otherwise authorized download.
+
+### Testing the additional actions in a sandbox Bird
+
+1. On a disposable job, select a segment from **Search job segments** or the segment dropdown. Run **Save draft translation** with test text and verify the returned status is `needs_review`. Map its exact **Updated at** text into the next write's **Expected updated at**.
+2. Run **Confirm translation** with text omitted to confirm that draft. Check for `approved` and the project's writable translation memory update. On a QA-invalid test translation, verify that confirmation fails with finding details. For concurrency, change the segment in the editor and submit an older timestamp; the action must stop with a conflict.
+3. Run **Add segment comment** on the same job/segment and verify its returned comment ID and content in the editor. An empty comment or more than 5000 characters must fail before a request is sent.
+4. Run **Download original file** using the file ID from **Upload file** or the project file dropdown. Map its native file output into a storage action and compare it with the original upload. Test an assigned Linguist connection with a known File ID and no project helper.
 
 ### Testing file actions in a sandbox Bird
 
@@ -189,13 +224,15 @@ Copy Tests.OpenLoc/appsettings.json.example to Tests.OpenLoc/appsettings.json an
 
 Set TestData.project_id to a project containing a processed job and set TestData.job_id to that job's ID. It must contain segments. Use the canonical numeric IDs with no leading zeroes. Configure valid source and target language codes for creation.
 
-The suite contains a real-API happy-path test for each of the seven actions, valid/invalid key checks, dynamic dropdown smoke tests, filtered job search checks, and an initial polling check. Local tests cover combined job filters and polling status transitions without making API calls. Tests without connection settings or required fixture IDs are marked inconclusive (reported as skipped).
+The suite contains real-API action tests, valid/invalid key checks, dynamic dropdown smoke tests, filtered job search checks, and an initial polling check. Local tests cover combined job filters and polling status transitions without making API calls. Tests without connection settings or required fixture IDs are marked inconclusive (reported as skipped).
 
 The creation test additionally requires TestData.enable_create_project to be true. It creates a uniquely named project and prints its ID. It does not delete data; remove the disposable project manually when finished. The tests call the real API without mocking it.
 
 Optionally configure TestData.customer_label_value_id, TestData.workflow_id, and TestData.template_id to exercise the Create project dropdown selections. The creation test verifies the assigned customer when configured. Customer, workflow, and template dropdown integration tests need corresponding entries in the test account. Local tests cover numeric label IDs and preservation of non-customer labels.
 
 Run only local validation and serialization checks:
+
+The additional-action tests cover draft/confirm bodies, timestamp precision, concurrency conflicts, QA-blocked confirmations, comments, dependent dropdown pagination, and original binary downloads with mocked HTTP. Real-API tests use TestData.segment_id and TestData.file_id. Segment writes and comments are disabled unless their individual flags are enabled: enable_save_segment_draft, enable_confirm_segment, and enable_add_segment_comment. Set translation_text and use disposable segments; confirmation also writes to translation memories. These tests do not restore prior translations or remove comments.
 
     dotnet test OpenLoc.sln --filter "TestCategory!=Integration"
 

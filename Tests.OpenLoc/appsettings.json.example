@@ -6,6 +6,12 @@
   "TestData": {
     "project_id": "",
     "job_id": "",
+    "segment_id": "",
+    "file_id": "",
+    "translation_text": "",
+    "enable_save_segment_draft": false,
+    "enable_confirm_segment": false,
+    "enable_add_segment_comment": false,
     "source_language": "en",
     "target_language": "de",
     "enable_create_project": false,

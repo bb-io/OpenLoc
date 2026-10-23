@@ -94,9 +94,10 @@ public partial class OpenLocClient : BlackBirdRestClient
         }
     }
 
-    private async Task<T> SendAsync<T>(RestRequest request, CancellationToken cancellationToken)
+    private async Task<T> SendAsync<T>(RestRequest request, CancellationToken cancellationToken,
+        Func<RestResponse, Exception>? configureError = null)
     {
-        var response = await SendResponseAsync(request, cancellationToken);
+        var response = await SendResponseAsync(request, cancellationToken, configureError);
         try
         {
             return JsonConvert.DeserializeObject<T>(response.Content ?? "")
@@ -108,7 +109,8 @@ public partial class OpenLocClient : BlackBirdRestClient
         }
     }
 
-    private async Task<RestResponse> SendResponseAsync(RestRequest request, CancellationToken cancellationToken)
+    private async Task<RestResponse> SendResponseAsync(RestRequest request, CancellationToken cancellationToken,
+        Func<RestResponse, Exception>? configureError = null)
     {
         for (var attempt = 0; ; attempt++)
         {
@@ -124,7 +126,7 @@ public partial class OpenLocClient : BlackBirdRestClient
                 }
             }
             cancellationToken.ThrowIfCancellationRequested();
-            if (!response.IsSuccessful) throw ConfigureErrorException(response);
+            if (!response.IsSuccessful) throw configureError?.Invoke(response) ?? ConfigureErrorException(response);
             return response;
         }
     }

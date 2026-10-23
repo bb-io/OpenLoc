@@ -7,6 +7,19 @@ namespace Apps.OpenLoc.Api;
 
 public partial class OpenLocClient
 {
+    public async Task<RestResponse> DownloadOriginalFileAsync(string fileId)
+    {
+        var id = InputValidation.IdPath(fileId, "File ID");
+        var response = await SendResponseAsync(new RestRequest($"/api/v1/files/{id}/source", Method.Get)
+            .AddHeader("Accept", "application/octet-stream"), CancellationToken.None);
+        if (response.RawBytes is not { Length: > 0 })
+            throw new PluginApplicationException("The original-file download returned an empty file. Check the uploaded document and try again.");
+        if (response.ContentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true ||
+            response.ContentType?.Contains("html", StringComparison.OrdinalIgnoreCase) == true)
+            throw new PluginApplicationException("The API returned an unexpected response instead of the original file. Check service availability and try again.");
+        return response;
+    }
+
     public async Task<UploadFileEnvelope> UploadFileAsync(string projectId, byte[] bytes, string fileName,
         string? contentType = null, bool? analyze = null, string? xlsxLayout = null)
     {
