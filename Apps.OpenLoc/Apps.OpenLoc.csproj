@@ -11,7 +11,9 @@
   <ItemGroup>
     <PackageReference Include="Blackbird.Applications.Sdk.Common" Version="2.16.0" />
     <PackageReference Include="Blackbird.Applications.Sdk.Utils" Version="1.1.0-rc.8709" />
+    <PackageReference Include="Blackbird.Applications.SDK.Extensions.FileManagement" Version="1.1.0" />
     <EmbeddedResource Include="image/icon.png" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="../README.md" CopyToOutputDirectory="Always" />
+    <InternalsVisibleTo Include="Tests.OpenLoc" />
   </ItemGroup>
 </Project>

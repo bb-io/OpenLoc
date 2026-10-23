@@ -11,10 +11,14 @@ using RestSharp;
 
 namespace Apps.OpenLoc.Api;
 
-public class OpenLocClient : BlackBirdRestClient
+public partial class OpenLocClient : BlackBirdRestClient
 {
-    public OpenLocClient(IEnumerable<AuthenticationCredentialsProvider> credentials)
-        : base(new RestClientOptions { BaseUrl = GetOrigin(credentials), Timeout = TimeSpan.FromSeconds(180), FollowRedirects = false })
+    public OpenLocClient(IEnumerable<AuthenticationCredentialsProvider> credentials, HttpMessageHandler? messageHandler = null)
+        : base(new RestClientOptions
+        {
+            BaseUrl = GetOrigin(credentials), Timeout = TimeSpan.FromSeconds(180), FollowRedirects = false,
+            ConfigureMessageHandler = handler => messageHandler ?? handler
+        })
     {
         var key = credentials.FirstOrDefault(x => x.KeyName == CredsNames.AccessKey)?.Value?.Trim();
         if (string.IsNullOrWhiteSpace(key) || key.Any(char.IsWhiteSpace))
@@ -92,6 +96,20 @@ public class OpenLocClient : BlackBirdRestClient
 
     private async Task<T> SendAsync<T>(RestRequest request, CancellationToken cancellationToken)
     {
+        var response = await SendResponseAsync(request, cancellationToken);
+        try
+        {
+            return JsonConvert.DeserializeObject<T>(response.Content ?? "")
+                ?? throw new PluginApplicationException("The API returned an empty response. Please try again.");
+        }
+        catch (JsonException)
+        {
+            throw new PluginApplicationException("The API returned an unexpected response. Check the API hostname or contact support.");
+        }
+    }
+
+    private async Task<RestResponse> SendResponseAsync(RestRequest request, CancellationToken cancellationToken)
+    {
         for (var attempt = 0; ; attempt++)
         {
             var response = await this.ExecuteAsync(request, cancellationToken);
@@ -107,15 +125,7 @@ public class OpenLocClient : BlackBirdRestClient
             }
             cancellationToken.ThrowIfCancellationRequested();
             if (!response.IsSuccessful) throw ConfigureErrorException(response);
-            try
-            {
-                return JsonConvert.DeserializeObject<T>(response.Content ?? "")
-                    ?? throw new PluginApplicationException("The API returned an empty response. Please try again.");
-            }
-            catch (JsonException)
-            {
-                throw new PluginApplicationException("The API returned an unexpected response. Check the API hostname or contact support.");
-            }
+            return response;
         }
     }
 

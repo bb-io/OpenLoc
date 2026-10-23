@@ -63,7 +63,7 @@ Choose **Project ID** from the dropdown or enter a numeric project ID. Returns t
 | Template ID | No | Search templates by name and select the setup to apply |
 | Workflow ID | No | Search workflows by name; an explicitly selected workflow overrides the template's workflow |
 
-Returns the created project's details and **Project ID** for subsequent actions. This creates a live project. Uploading files is outside this initial version.
+Returns the created project's details and **Project ID** for subsequent actions. This creates a live project. Use **Upload file** to add documents afterward.
 
 The language dropdown offers English (`en`), French (`fr`), and German (`de`), the codes documented in the supplied OpenAPI creation examples. The specification does not publish a complete supported-language catalog; the dropdown deliberately does not assume that every ISO language code is accepted.
 
@@ -110,6 +110,41 @@ Updates the assignee of the job's current workflow step and returns the updated 
 | Status | No | Needs review, automatically approved, or approved |
 
 Returns **Segments**, including segment IDs, positions, source text, translations, review statuses, translation origins, translation memory match percentages, update times, and the previous workflow step's result when available. Untranslated target text and unavailable optional details have no value.
+
+### Upload file
+
+Select **Project ID** from the existing project dropdown and map **File** from a previous Bird step. The file is downloaded through Blackbird's file-management service and uploaded as multipart form data. The API detects its format and creates one job per target language automatically. The app does not create any additional jobs or retry the upload automatically.
+
+| Input | Required | Meaning |
+| --- | --- | --- |
+| Project ID | Yes | Project that receives the document |
+| File | Yes | Native Blackbird file, up to the API's 50 MB limit |
+| Analyze | No | Request word-count analysis after jobs are created; false is sent explicitly when selected |
+| XLSX layout | No | Serialized XLSXLayout JSON text, for XLSX files without language codes in row 1 |
+
+For XLSX, leave **XLSX layout** empty when row 1 contains language codes. The app checks row 1 for the project's source and target language codes when a layout is supplied; the API also validates workbook layout rules. Without a layout, every text cell of every visible sheet is translated. With a layout, only listed sheets are translated: listed columns of each, or all text cells when columns are omitted or empty. Translations are written back to their own cells. A sheet's optional `header_row` flag leaves its first row untranslated.
+
+Example layout:
+
+```json
+{"sheets":[{"name":"Sheet1","columns":["B","D"],"header_row":true}]}
+```
+
+Returns **File ID**, **Project ID**, **File name**, **File format**, **Segment count**, **Created date**, and **Warnings**. Warnings can describe analysis or other work that could not start after the file was saved; check them before retrying so you do not upload the document twice. Upload requires an owner, admin, or project manager and a key with write access.
+
+### Download translated file
+
+Select or enter **Job ID**. Optionally select **Project ID** first to populate the existing searchable job dropdown; only the Job ID is used for export. **Export format** offers the original document format (`source`, the default) or bilingual XLIFF 1.2 (`xliff`).
+
+Returns a native Blackbird **File** that can be passed directly to subsequent actions. Binary content is stored through Blackbird's file-management service. The response filename is preserved, including its extension; if unavailable, the job's file name is used, with `.xlf` for an XLIFF export. Empty files and API failures produce errors. Owner, admin, and project manager roles can export; linguists can export jobs they are allowed to access.
+
+### Testing file actions in a sandbox Bird
+
+1. Use a test connection with your own API hostname and access key. Choose a disposable project with at least one target language.
+2. Add an upstream step that produces a native file. Map its file output into **Upload file**, select the project, and run the Bird. Check the returned file ID and warnings.
+3. Use **Search jobs** for that project. Verify that the uploaded file has one job per target language. Do not create extra jobs manually.
+4. Complete or prepare the translation in the test job. Add **Download translated file**, select that job, and map its file output into a file-consuming action such as storage upload. Verify that `source` keeps the original extension and `xliff` opens as bilingual XLIFF 1.2.
+5. Test XLSX separately: upload a workbook without language headers using the example layout, then a workbook with project language codes in row 1 with layout left empty. Supplying a layout for the latter must fail clearly.
 
 ## Events
 
@@ -165,6 +200,8 @@ Run only local validation and serialization checks:
     dotnet test OpenLoc.sln --filter "TestCategory!=Integration"
 
 The update test additionally requires TestData.enable_update_job to be true and TestData.assignee_user_id to identify an active member. Use a disposable job with an active workflow step. This changes its assignment and leaves that assignment in place.
+
+The file tests use mocked HTTP responses for multipart fields, binary storage, filenames, error responses, empty responses, and XLSX layout validation. Real-API file tests require configured credentials and a job that can be exported. Set TestData.enable_upload_file to true only for a disposable project; this test uploads an HTML file and creates real translation jobs. It does not clean them up automatically. No real API credentials are needed for the mocked tests.
 
 Run real API tests excluding creation and assignment changes:
 
