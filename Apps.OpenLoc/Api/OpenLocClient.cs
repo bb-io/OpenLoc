@@ -41,6 +41,21 @@ public class OpenLocClient : BlackBirdRestClient
         return page.Data ?? throw new PluginApplicationException("The API returned no member list. Please try again.");
     }
 
+    // Complete collections such as labels and workflows do not accept pagination parameters.
+    public async Task<List<T>> GetCollectionAsync<T>(string path, CancellationToken cancellationToken = default)
+    {
+        var page = await SendAsync<PageEnvelope<T>>(new RestRequest("/api/v1" + path, Method.Get), cancellationToken);
+        return page.Data ?? throw new PluginApplicationException("The API returned no collection. Please try again.");
+    }
+
+    public async Task<List<ProjectLabelDto>> SetProjectLabelsAsync(string projectId, long[] valueIds)
+    {
+        var request = new RestRequest($"/api/v1/projects/{projectId}/labels", Method.Put)
+            .AddJsonBody(new { value_ids = valueIds });
+        var page = await SendAsync<PageEnvelope<ProjectLabelDto>>(request, CancellationToken.None);
+        return page.Data ?? throw new PluginApplicationException("The API returned no project labels. Check the project before trying again.");
+    }
+
     public async Task<T> GetDataAsync<T>(string path, object? body = null, CancellationToken cancellationToken = default)
     {
         var request = new RestRequest("/api/v1" + path, body is null ? Method.Get : Method.Post);

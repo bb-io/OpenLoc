@@ -1,4 +1,6 @@
 using Apps.OpenLoc.Actions;
+using Apps.OpenLoc.Api;
+using Apps.OpenLoc.Models.Dtos;
 using Apps.OpenLoc.Models.Identifiers;
 using Apps.OpenLoc.Models.Requests;
 using Tests.OpenLoc.Base;
@@ -43,6 +45,9 @@ public class ProjectActionTests : TestBase
         var created = await actions.CreateProject(new CreateProjectRequest
         {
             Name = name, SourceLanguage = source, TargetLanguages = [target],
+            CustomerId = TestData.GetValueOrDefault("customer_label_value_id") is { Length: > 0 } customerId ? customerId : null,
+            WorkflowId = TestData.GetValueOrDefault("workflow_id") is { Length: > 0 } workflowId ? workflowId : null,
+            TemplateId = TestData.GetValueOrDefault("template_id") is { Length: > 0 } templateId ? templateId : null,
             Description = "Disposable project created by the Blackbird OpenLoc integration tests."
         });
         Assert.IsFalse(string.IsNullOrWhiteSpace(created.ProjectId));
@@ -51,5 +56,11 @@ public class ProjectActionTests : TestBase
         Assert.AreEqual(name, saved.Name);
         Assert.AreEqual(source, saved.SourceLanguage);
         CollectionAssert.Contains(saved.TargetLanguages, target);
+        if (TestData.GetValueOrDefault("customer_label_value_id") is { Length: > 0 } expectedCustomer)
+        {
+            using var client = new OpenLocClient(Creds);
+            var labels = await client.GetCollectionAsync<ProjectLabelDto>($"/projects/{created.ProjectId}/labels");
+            Assert.IsTrue(labels.Any(x => x.ValueId == expectedCustomer));
+        }
     }
 }

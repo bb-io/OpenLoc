@@ -34,10 +34,15 @@ Find projects by any combination of the following optional filters.
 
 | Input | Meaning |
 | --- | --- |
-| Project name | Text to search for in project names |
+| Project name contains | Text contained in the project name, ignoring capitalization |
 | Status | Draft, in progress, completed, or on hold |
-| Source language | A language code, for example en |
-| Target language | A language code included in the project's targets, for example de |
+| Created after | Only projects created after this date and time |
+| Created before | Only projects created before this date and time |
+| Due in (hours) | Positive whole number of hours from now; only projects due within that window |
+
+All selected filters must match. Creation-date filters are applied within the app across all pages. Dates without a time zone are treated as UTC; projects created exactly at either boundary are excluded.
+
+The due window is calculated once when the search starts and applied across all pages. It includes deadlines from that time through the specified number of hours ahead, including both boundaries. Overdue projects and projects without a deadline are excluded when this filter is set.
 
 Returns **Projects**, including project IDs, names, descriptions, statuses, languages, dates, and optional creator and template IDs.
 
@@ -50,14 +55,23 @@ Choose **Project ID** from the dropdown or enter a numeric project ID. Returns t
 | Input | Required | Meaning |
 | --- | --- | --- |
 | Project name | Yes | Name shown on the project page |
-| Source language | Yes | Source language code, for example en |
-| Target languages | Yes | One or more target language codes, for example de and fr |
+| Source language | Yes | Select a language name; its language code is sent to the API |
+| Target languages | Yes | Select one or more language names; their codes are sent as an array |
 | Description | No | Notes shown on the project page |
 | Deadline | No | Due date and time; dates without a time zone are treated as UTC |
-| Template ID | No | Numeric ID of a template whose setup should be applied |
-| Workflow ID | No | Numeric ID of a workflow; overrides the template's workflow |
+| Customer label value ID | No | Select a customer by name; the selected value is its label value ID |
+| Template ID | No | Search templates by name and select the setup to apply |
+| Workflow ID | No | Search workflows by name; an explicitly selected workflow overrides the template's workflow |
 
-Returns the created project's details and **Project ID** for subsequent actions. This creates a live project. Uploading files is outside this initial version. Customer and domain labels are not creation inputs in the API.
+Returns the created project's details and **Project ID** for subsequent actions. This creates a live project. Uploading files is outside this initial version.
+
+The language dropdown offers English (`en`), French (`fr`), and German (`de`), the codes documented in the supplied OpenAPI creation examples. The specification does not publish a complete supported-language catalog; the dropdown deliberately does not assume that every ISO language code is accepted.
+
+The customer dropdown reads the built-in label whose key is `customer`, independently of its display name. If selected, the app validates the customer before creation, creates the project once, reads its current labels, and assigns the customer with a separate label update. Other labels, including those inherited from a template, are preserved. Customer IDs are not sent in the project creation body.
+
+If the customer step fails after creation, the action reports partial success with the created project ID. Check and update that existing project; do not rerun Create project, which would create another project. Project creation and label writes are never retried automatically.
+
+Template searches use the API's name search and cursor pagination. Workflow and customer searches filter the complete collections locally because those endpoints do not document search or pagination parameters. Project ID inputs reuse the existing searchable project dropdown.
 
 ### Search jobs
 
@@ -143,6 +157,8 @@ Set TestData.project_id to a project containing a processed job and set TestData
 The suite contains a real-API happy-path test for each of the seven actions, valid/invalid key checks, dynamic dropdown smoke tests, filtered job search checks, and an initial polling check. Local tests cover combined job filters and polling status transitions without making API calls. Tests without connection settings or required fixture IDs are marked inconclusive (reported as skipped).
 
 The creation test additionally requires TestData.enable_create_project to be true. It creates a uniquely named project and prints its ID. It does not delete data; remove the disposable project manually when finished. The tests call the real API without mocking it.
+
+Optionally configure TestData.customer_label_value_id, TestData.workflow_id, and TestData.template_id to exercise the Create project dropdown selections. The creation test verifies the assigned customer when configured. Customer, workflow, and template dropdown integration tests need corresponding entries in the test account. Local tests cover numeric label IDs and preservation of non-customer labels.
 
 Run only local validation and serialization checks:
 

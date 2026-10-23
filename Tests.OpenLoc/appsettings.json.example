@@ -9,6 +9,9 @@
     "source_language": "en",
     "target_language": "de",
     "enable_create_project": false,
+    "customer_label_value_id": "",
+    "workflow_id": "",
+    "template_id": "",
     "assignee_user_id": "",
     "enable_update_job": false
   }
