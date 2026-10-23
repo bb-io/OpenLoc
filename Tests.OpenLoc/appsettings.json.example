@@ -1,0 +1,15 @@
+{
+  "ConnectionDefinition": {
+    "hostname": "",
+    "access_key": ""
+  },
+  "TestData": {
+    "project_id": "",
+    "job_id": "",
+    "source_language": "en",
+    "target_language": "de",
+    "enable_create_project": false,
+    "assignee_user_id": "",
+    "enable_update_job": false
+  }
+}
