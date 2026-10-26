@@ -3,9 +3,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Product>OpenLoc</Product>
+    <Product>OpenLoc [Beta]</Product>
     <Description>Manage translation projects, jobs and segments in OpenLoc.</Description>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <AssemblyName>Apps.OpenLoc</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
