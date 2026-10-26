@@ -1,0 +1,25 @@
+{
+  "ConnectionDefinition": {
+    "hostname": "",
+    "access_key": ""
+  },
+  "TestData": {
+    "project_id": "",
+    "job_id": "",
+    "segment_id": "",
+    "file_id": "",
+    "translation_text": "",
+    "enable_save_segment_draft": false,
+    "enable_confirm_segment": false,
+    "enable_add_segment_comment": false,
+    "source_language": "en",
+    "target_language": "de",
+    "enable_create_project": false,
+    "enable_upload_file": false,
+    "customer_label_value_id": "",
+    "workflow_id": "",
+    "template_id": "",
+    "assignee_user_id": "",
+    "enable_update_job": false
+  }
+}
